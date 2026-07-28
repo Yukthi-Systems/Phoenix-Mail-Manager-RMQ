@@ -1,0 +1,42 @@
+- name: Block Relay Emails
+  hosts: "{{ target_host }}"
+  gather_facts: no
+  become: yes
+
+  vars:
+    POSTFIX_ACCESS_FILE: "/etc/postfix/access"
+    EMAIL_ID_TO_BLOCK: "{{ block_email }}"
+
+  tasks:
+    - block:
+        - name: Append the email to Postfix access file with HOLD action
+          lineinfile:
+            path: "{{ POSTFIX_ACCESS_FILE }}"
+            line: "{{ EMAIL_ID_TO_BLOCK }} HOLD"
+            create: yes
+            state: present
+
+        - name: Rebuild postfix access map
+          command: postmap {{ POSTFIX_ACCESS_FILE }}
+
+        - name: Reload postfix
+          command: postfix reload
+
+      rescue:
+        - name: Rollback - remove the email entry from Postfix access file
+          lineinfile:
+            path: "{{ POSTFIX_ACCESS_FILE }}"
+            line: "{{ EMAIL_ID_TO_BLOCK }} HOLD"
+            state: absent
+
+        - name: Rollback - rebuild postfix access map after removal
+          command: postmap {{ POSTFIX_ACCESS_FILE }}
+          ignore_errors: yes
+
+        - name: Rollback - reload postfix after removal
+          command: postfix reload
+          ignore_errors: yes
+
+        - name: Fail the play explicitly
+          fail:
+            msg: "Blocking {{ EMAIL_ID_TO_BLOCK }} failed. All changes rolled back."

@@ -1,0 +1,42 @@
+services:
+  phoenix-mail-manager-rmq-worker:
+    image: rjyspl/phoenix-mail-manager-rmq:latest
+    deploy:
+      mode: replicated
+      replicas: 1
+
+    environment:
+      - TZ=Asia/Kolkata
+
+      # RabbitMQ Configuration
+      - RABBIT_SERVER_IP=<RABBITMQ_SERVER_IP>
+      - RABBIT_SERVER_PORT=<RABBITMQ_SERVER_PORT>
+      - RABBIT_USER=<RABBITMQ_USER>
+      - RABBIT_PASSWORD=<RABBITMQ_PASSWORD>
+      - RABBIT_QUEUE_NAME=v3_mailbox_manager
+      - RABBIT_VHOST=yukthi
+
+      # SMTP Configuration
+      - POSTGRES_DB_USERNAME=<POSTGRES_DB_USERNAME>
+      - POSTGRES_DB_PASSWORD=<POSTGRES_DB_PASSWORD>
+      - POSTGRES_DB_HOST=<POSTGRES_DB_HOST>
+      - POSTGRES_DB_PORT=<POSTGRES_DB_PORT>
+      - POSTGRES_DB_DATABASE=<POSTGRES_DB_DATABASE>
+      # Do like above or give POSTGRES_DB_URI for the connection string
+      # - POSTGRES_DB_URI=postgresql://<POSTGRES_DB_USERNAME>:<POSTGRES_DB_PASSWORD>@<POSTGRES_DB_HOST>:<POSTGRES_DB_PORT>/<POSTGRES_DB_DATABASE>
+
+      # QuestDB Details
+      - QUEST_DB_HOST=<QUEST_DB_HOST>
+      - QUEST_DB_PORT=<QUEST_DB_PORT>
+      - QUEST_DB_USER=<QUEST_DB_USER>
+      - QUEST_DB_PASSWORD=<QUEST_DB_PASSWORD>
+
+      # DKIM API Configuration
+      - DKIM_API_URL=<DKIM_API_URL>
+      - DKIM_API_AUTH_TOKEN=<DKIM_API_AUTH_TOKEN>
+
+    volumes:
+      - /var/log/phoenix-mail-manager-rmq-worker:/var/log/rmq_worker
+      - ./ansible:/ansible
+
+    restart: always

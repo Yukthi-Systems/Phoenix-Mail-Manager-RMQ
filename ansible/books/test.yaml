@@ -1,0 +1,44 @@
+- name: Test Ansible Playbook
+  hosts: imapsync01
+  gather_facts: no
+  become: yes
+  vars:
+    WORKING_DIR: "/"
+
+  tasks:
+    # - name: Change to the Docker Compose directory
+    #   command: chdir={{ WORKING_DIR }} ls
+    #   register: dir_check
+
+    # - name: Fail if directory does not exist
+    #   fail:
+    #     msg: "Project directory does not exist!"
+    #   when: dir_check.rc != 0
+
+    # - name: List all files in the working directory
+    #   command: ls -l
+    #   args:
+    #     chdir: "{{ WORKING_DIR }}"
+    #   register: dir_listing
+
+    # - name: Show directory listing
+    #   debug:
+    #     msg: "{{ dir_listing.stdout_lines }}"
+
+    - name: Show current user
+      command: whoami
+      register: current_user
+
+    - name: Display current user
+      debug:
+        msg: "Current user is: {{ current_user.stdout }}"
+
+    # - name: Test Failure
+    #   fail:
+    #     msg: "This task is intentionally failing for testing purposes."
+    #   when: true  # Change this condition to false to skip the failure
+
+
+    # - name: Display current user
+    #   debug:
+    #     msg: "Current user is: {{ current_user.stdout }}"

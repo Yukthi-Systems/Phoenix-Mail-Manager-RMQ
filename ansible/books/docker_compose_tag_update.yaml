@@ -1,0 +1,88 @@
+- name: Update Docker image and start the container
+  hosts: "{{ target_host }}"
+  gather_facts: no
+  become: yes
+  vars:
+    WORKING_DIR: "{{ target_working_dir }}"
+    DOCKER_IMAGE_NAME: "{{ target_image_name }}"
+    IMAGE_TAG: "{{ image_tag | default('latest') }}"
+
+  tasks:
+    - name: Ensure Docker Compose is installed
+      command: docker compose version
+      register: docker_compose_check
+
+    - name: Fail if Docker Compose is not installed
+      fail:
+        msg: "Docker Compose is not installed!"
+      when: docker_compose_check.rc != 0
+
+    - name: Change to the Docker Compose directory
+      command: chdir={{ WORKING_DIR }} ls
+      register: dir_check
+
+    - name: Fail if directory does not exist
+      fail:
+        msg: "Project directory does not exist!"
+      when: dir_check.rc != 0
+
+    - name: Check for Docker Compose file (docker-compose.yaml or docker-compose.yml)
+      find:
+        paths: "{{ WORKING_DIR }}"
+        patterns: "docker-compose.y*ml"
+      register: docker_compose_file
+
+    - name: Fail if no Docker Compose file is found
+      fail:
+        msg: "No docker-compose.yaml or docker-compose.yml found in {{ WORKING_DIR }}!"
+      when: docker_compose_file.matched == 0
+
+    - name: Get the first valid Docker Compose file
+      set_fact:
+        docker_compose_path: "{{ docker_compose_file.files[0].path }}"
+    
+    - name: Show all the variables
+      debug:
+        msg:
+          - "WORKING_DIR: {{ WORKING_DIR }}"
+          - "DOCKER_IMAGE_NAME: {{ DOCKER_IMAGE_NAME }}"
+          - "DOCKER_COMPOSE_PATH: {{ docker_compose_path }}"
+          - "IMAGE_TAG: {{ IMAGE_TAG }}"
+
+    - name: Update the Docker Compose file with the new image tag
+      replace:
+        path: "{{ docker_compose_path }}"
+        regexp: "{{ DOCKER_IMAGE_NAME }}:.*"
+        replace: "{{ DOCKER_IMAGE_NAME }}:{{ IMAGE_TAG }}"
+
+    - name: Pull latest Docker images
+      command: docker compose pull
+      args:
+        chdir: "{{ WORKING_DIR }}"
+      register: docker_pull
+
+    - name: Fail if Docker images are not pulled
+      fail:
+        msg: "Docker images are not pulled!"
+      when: docker_pull.rc != 0
+
+    - name: Start Docker containers with the new tag
+      command: docker compose up -d
+      args:
+        chdir: "{{ WORKING_DIR }}"
+      register: docker_start
+
+    - name: Fail if Docker containers are not started
+      fail:
+        msg: "Docker containers are not started!"
+      when: docker_start.rc != 0
+
+    - name: Check running containers
+      command: docker compose ps
+      args:
+        chdir: "{{ WORKING_DIR }}"
+      register: docker_status
+
+    - name: Show running containers
+      debug:
+        msg: "{{ docker_status.stdout_lines }}"

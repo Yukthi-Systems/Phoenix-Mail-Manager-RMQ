@@ -1,0 +1,21 @@
+- name: Migrate Email
+  hosts: "{{ target_host }}"
+  gather_facts: no
+  become: yes
+
+  vars:
+    TARGET_SERVER_IP: "{{ target_server_ip }}"
+    EMAIL_DIR: "{{ email_path }}"
+    EMAIL_USER: "{{ email_user }}"
+    MIGRATION_ID: "{{ migration_id }}"
+
+  tasks:
+    - name: Ensure the email directory exists
+      file:
+        path: "{{ EMAIL_DIR }}"
+        state: directory
+
+    - name: Execute migration script with venv's python
+      command: /scripts/.venv/bin/python3 migration_dsync.py {{ EMAIL_USER }} {{ TARGET_SERVER_IP }} {{ MIGRATION_ID }}
+      args:
+        chdir: /scripts

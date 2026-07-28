@@ -1,0 +1,16 @@
+- name: Delete Email from Server
+  hosts: "{{ target_host }}"
+  gather_facts: no
+  become: yes
+
+  vars:
+    EMAIL_DIR: "{{ email_path }}"
+
+  tasks:
+    - name: Ensure the email directory exists
+      file:
+        path: "{{ EMAIL_DIR }}"
+        state: directory
+
+    - name: Delete the full email directory
+      command: rm -rf "{{ EMAIL_DIR }}"

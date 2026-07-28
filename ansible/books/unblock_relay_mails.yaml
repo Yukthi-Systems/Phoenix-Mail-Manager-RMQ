@@ -1,0 +1,47 @@
+- name: Unblock Relay Emails
+  hosts: "{{ target_host }}"
+  gather_facts: no
+  become: yes
+
+  vars:
+    POSTFIX_ACCESS_FILE: "/etc/postfix/access"
+    EMAIL_ID_TO_UNBLOCK: "{{ unblock_email }}"
+
+  tasks:
+    - name: Remove the email entry from Postfix access file
+      lineinfile:
+        path: "{{ POSTFIX_ACCESS_FILE }}"
+        line: "{{ EMAIL_ID_TO_UNBLOCK }} HOLD"
+        state: absent
+
+    - name: Rebuild postfix access map
+      command: postmap {{ POSTFIX_ACCESS_FILE }}
+
+    - name: Reload postfix
+      command: postfix reload
+
+    - name: Get queue IDs for this email
+      shell: |
+        mailq | grep -B1 {{ EMAIL_ID_TO_UNBLOCK }} | grep '!' | awk '{print $1}' | tr -d '!'
+      register: queue_ids
+      changed_when: false
+
+    - name: Flush the mail queue
+      command: postqueue -f
+
+    - name: Release the email from hold if any queue IDs exist
+      command: postsuper -H {{ item }}
+      loop: "{{ queue_ids.stdout_lines }}"
+      when: queue_ids.stdout_lines | length > 0
+      register: release_output
+      failed_when: release_output is failed
+
+    - name: Debug release output
+      debug:
+        var: release_output
+      when: queue_ids.stdout_lines | length > 0
+
+    - name: Show message if no held mail found
+      debug:
+        msg: "No held mail found for {{ EMAIL_ID_TO_UNBLOCK }} — nothing to release."
+      when: queue_ids.stdout_lines | length == 0

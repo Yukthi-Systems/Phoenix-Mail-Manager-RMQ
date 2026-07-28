@@ -1,0 +1,26 @@
+- name: Validate Server Space, check if sufficient space is available else fail
+  hosts: "{{ target_host }}"
+  gather_facts: no
+  become: yes
+  vars:
+    VMAIL_DIR: "{{ vmail_dir }}"
+    REQUIRED_SPACE_IN_GB: "{{ required_space_in_gb }}"
+
+  tasks:
+    - name: Check free space in target directory
+      command: df -BG --output=avail "{{ VMAIL_DIR }}"
+      register: space_check
+      changed_when: false
+
+    - name: Extract available space in GB (integer)
+      set_fact:
+        available_space_gb: "{{ space_check.stdout_lines[1] | regex_replace('[^0-9]', '') | int }}"
+
+    - name: Debug available space
+      debug:
+        msg: "Available space in {{ VMAIL_DIR }}: {{ available_space_gb }} GB"
+
+    - name: Fail if insufficient space
+      fail:
+        msg: "Insufficient space: {{ available_space_gb }} GB available, but {{ REQUIRED_SPACE_IN_GB }} GB required."
+      when: available_space_gb < REQUIRED_SPACE_IN_GB

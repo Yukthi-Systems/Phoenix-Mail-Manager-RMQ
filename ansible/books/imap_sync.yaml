@@ -1,0 +1,51 @@
+- name: Run IMAP sync
+  hosts: imapsync_server
+  gather_facts: no
+  become: yes
+
+  tasks:
+    - name: Ensure log directory exists
+      file:
+        path: /var/log/imapsync
+        state: directory
+        mode: "0755"
+
+    - name: Decode imapsync command
+      set_fact:
+        decoded_cmd: "{{ run_imap_sync_cmd | b64decode }}"
+
+    - name: Execute imapsync safely
+      shell: |
+        set -euo pipefail
+        set -o noglob
+        {{ decoded_cmd }}
+      args:
+        executable: /bin/bash
+      register: cmd_result
+      failed_when: false   # <-- CRITICAL FIX
+      changed_when: true
+
+    - name: Save command output to log file
+      copy:
+        dest: "/var/log/imapsync/{{ job_id }}.log"
+        content: |
+          COMMAND:
+          {{ decoded_cmd }}
+
+          RETURN CODE:
+          {{ cmd_result.rc }}
+
+          STDOUT:
+          {{ cmd_result.stdout | default('') }}
+
+          STDERR:
+          {{ cmd_result.stderr | default('') }}
+        mode: "0644"
+
+    - name: Fail if imapsync failed
+      fail:
+        msg: >
+          IMAP sync failed for job {{ job_id }}.
+          Exit code: {{ cmd_result.rc }}.
+          See /var/log/imapsync/{{ job_id }}.log for details.
+      when: cmd_result.rc != 0
