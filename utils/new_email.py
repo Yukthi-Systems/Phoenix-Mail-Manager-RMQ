@@ -66,12 +66,17 @@ def _possible_servers_by_quota(available_servers: dict, required_quota: float) -
     final_possible_servers = {}
     for server_id, server_info in available_servers.items():
         available_server_space = server_info['quota_allocated'] - server_info['quota_utilized']
+        logging.debug(f"Server {server_id} has available space: {available_server_space} GB")
         if available_server_space >= required_quota:
             final_possible_servers[server_id] = server_info
+
+    logging.info(f"Servers that can accommodate the required quota of {required_quota} GB: {final_possible_servers}")
 
     # If there are servers that can accommodate the required quota, return them
     if final_possible_servers:
         return final_possible_servers
+
+    logging.warning(f"No servers can accommodate the required quota of {required_quota} GB. Selecting the server with the largest available space: {available_servers}")
 
     # If there are no servers that can accommodate the required quota
     # Calculate the server with largest available space and return that server
