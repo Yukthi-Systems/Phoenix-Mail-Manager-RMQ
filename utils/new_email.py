@@ -50,8 +50,14 @@ def _get_possible_servers(cursor, email: str) -> dict:
         logging.error("No active servers found in the database.")
         return {}
 
+    # If the email domain is locked, use only the locked servers
     if locked_servers:
         return {server: total_active_servers[server] for server in locked_servers if server in total_active_servers}
+
+    # If the Domain is not locked, use all the active servers except the on-premise servers
+    total_active_servers = {
+        server: info for server, info in total_active_servers.items() if not info['is_on_prem']
+    }
 
     return total_active_servers
 

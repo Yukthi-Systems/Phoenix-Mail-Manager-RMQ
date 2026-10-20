@@ -81,6 +81,7 @@ def check_email_domain_locked(cursor: psycopg2.extensions.cursor, email: str) ->
         if isinstance(locked_servers_group, str):
             locked_servers_group = locked_servers_group.replace('{', '').replace('}', '').split(',')
 
+        # Convert the locked servers group to a list of strings
         return [str(server) for server in locked_servers_group]
 
     except Exception as e:
@@ -97,20 +98,21 @@ def get_all_active_servers(cursor: psycopg2.extensions.cursor) -> dict:
     - is_mailbox_server = TRUE
     Returns a dictionary of server_id to their quota information
     """
-    query = "SELECT server_id, quota_allocated, quota_utilized FROM servers WHERE is_active = TRUE AND is_accepting_new_mailboxes = TRUE AND is_mailbox_server = TRUE"
+    query = "SELECT server_id, quota_allocated, quota_utilized, is_on_prem FROM servers WHERE is_active = TRUE AND is_accepting_new_mailboxes = TRUE AND is_mailbox_server = TRUE"
     try:
         cursor.execute(query)
         rows = cursor.fetchall()
         return {
             str(row[0]): {
                 'quota_allocated': float(row[1]),
-                'quota_utilized': float(row[2])
+                'quota_utilized': float(row[2]),
+                'is_on_prem': bool(row[3])
             } for row in rows
         }
 
     except Exception as e:
         logging.error(f"Error fetching active servers: {e}", exc_info=True)
-        return []
+        return {}
 
 
 def get_required_email_quota(cursor: psycopg2.extensions.cursor, email_id: str) -> float:
